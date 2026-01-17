@@ -8,10 +8,27 @@ function _gwt_create() {
     echo "Cancelled"
     return 1
   fi
-  local wt_name="${new_branch//\//-}"
-  local wt_path="$HOME/.ben-worktrees/$wt_name"
+
   local source_dir="$(git rev-parse --show-toplevel)"
-  mkdir -p "$HOME/.ben-worktrees"
+  local main_worktree="$(git worktree list --porcelain | head -1 | cut -d' ' -f2)"
+  local project_name="$(basename "$main_worktree")"
+  local wt_name="${new_branch//\//-}"
+  local project_dir="$HOME/.ben-worktrees/$project_name"
+  local wt_path="$project_dir/$wt_name"
+
+  # Check if branch already exists
+  if git show-ref --verify --quiet "refs/heads/$new_branch"; then
+    echo "Branch '$new_branch' already exists"
+    return 1
+  fi
+
+  # Check if directory already exists
+  if [ -d "$wt_path" ]; then
+    echo "Directory '$wt_path' already exists"
+    return 1
+  fi
+
+  mkdir -p "$project_dir"
   git worktree add -b "$new_branch" "$wt_path" HEAD && \
   for env_file in "$source_dir"/.env*(N); do
     ln -s "$env_file" "$wt_path/$(basename "$env_file")" && echo "Symlinked $(basename "$env_file")"
@@ -212,9 +229,10 @@ function wtrename() {
     return 1
   fi
 
-  local current_dir="$(pwd)"
   local wt_root="$(git rev-parse --show-toplevel 2>/dev/null)"
   local current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+  local main_worktree="$(git worktree list --porcelain | head -1 | cut -d' ' -f2)"
+  local project_name="$(basename "$main_worktree")"
 
   # Check we're in a worktree
   if [[ -z "$wt_root" ]] || [[ "$wt_root" != *"/.ben-worktrees/"* ]]; then
@@ -224,7 +242,8 @@ function wtrename() {
 
   # Normalize new name for directory (replace / with -)
   local new_dir_name="${new_name//\//-}"
-  local new_wt_path="$HOME/.ben-worktrees/$new_dir_name"
+  local project_dir="$HOME/.ben-worktrees/$project_name"
+  local new_wt_path="$project_dir/$new_dir_name"
 
   # Check if branch already exists
   if git show-ref --verify --quiet "refs/heads/$new_name"; then
