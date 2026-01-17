@@ -7,43 +7,110 @@ Custom ZSH functions for productivity workflows.
 Add to your `~/.zshrc`:
 
 ```zsh
-source "$HOME/code/zsh-vibecoded-shortcuts/functions.zsh"
+source "$HOME/dev/dotfiles/zsh/functions.zsh"
 ```
 
 Then reload: `source ~/.zshrc`
 
 ## Functions
 
-### `tmuxh [session_name]`
+### Worktree Management
 
-Creates a tmux session with iTerm2 integration (`-CC` flag) and a 2x2 grid of panes, all starting in the current directory.
+Worktrees are organized by project: `~/.ben-worktrees/<project-name>/<branch-name>`
 
-```bash
-tmuxh           # Creates session named "main"
-tmuxh myproject # Creates session named "myproject"
-```
-
-### `gwts`
+#### `wt`
 
 Switch between worktrees or create a new one (requires fzf). New worktrees are created from current HEAD with `.env*` files symlinked.
 
 ```bash
-gwts  # Opens fzf picker - select a worktree or "+ Create new worktree"
+wt  # Opens fzf picker - select a worktree or "+ Create new worktree"
 ```
 
-### `gwtb`
+#### `wt0`
 
 Jump to the base (main) worktree from any worktree.
 
 ```bash
-gwtb  # Returns to the main repository
+wt0  # Returns to the main repository
 ```
 
-### `gwtd` / `gwtd!`
+#### `wtd` / `wtd!`
 
-Delete the current worktree and return to main repo. Use `gwtd!` to force delete even with uncommitted changes.
+Delete the current worktree and return to main repo.
 
 ```bash
-gwtd   # Safe delete (checks for uncommitted changes)
-gwtd!  # Force delete
+wtd   # Safe delete (checks for uncommitted changes first)
+wtd!  # Force delete (even with uncommitted changes)
+```
+
+#### `wtrename <new-name>`
+
+Rename the current worktree's branch and directory.
+
+```bash
+wtrename feature/new-name  # Renames branch and moves directory
+```
+
+#### `wtls`
+
+List all worktrees.
+
+```bash
+wtls  # Runs git worktree list
+```
+
+### Git Shortcuts
+
+#### `gpush`
+
+Push current branch to origin with upstream tracking.
+
+```bash
+gpush  # Pushes current branch to origin
+```
+
+#### `gpr`
+
+Create a GitHub PR for the current branch (wrapper around `gh pr create`).
+
+```bash
+gpr                    # Create PR interactively
+gpr --title "My PR"    # Pass arguments to gh pr create
+```
+
+#### `pmain`
+
+Pull origin/main into the current branch.
+
+```bash
+pmain  # git pull origin main
+```
+
+#### `save [commit message]`
+
+Stage all changes, commit, and push in one command.
+
+```bash
+save              # Commits as "wip" and pushes
+save fixed bug    # Commits as "fixed bug" and pushes
+```
+
+### Tmux
+
+#### `tmux4 [session_name]`
+
+Creates a tmux session with iTerm2 integration (`-CC` flag) and a 2x2 grid of panes.
+
+```bash
+tmux4           # Creates session named "main"
+tmux4 myproject # Creates session named "myproject"
+```
+
+#### `tmuxa [session_name]`
+
+Reattach to a tmux session with iTerm2 integration.
+
+```bash
+tmuxa           # Attach to "main"
+tmuxa myproject # Attach to "myproject"
 ```
