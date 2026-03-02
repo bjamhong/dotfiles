@@ -1,5 +1,11 @@
 # Custom ZSH Functions
 
+# Claude Code with auto-accept permissions
+alias claude='claude --dangerously-skip-permissions'
+
+# Kill tmux session (usage: tkill <session_name>)
+alias tkill='tmux kill-session -t'
+
 # Helper: create a new worktree from current HEAD
 function _gwt_create() {
   echo -n "New branch name: "
@@ -30,8 +36,10 @@ function _gwt_create() {
 
   mkdir -p "$project_dir"
   git worktree add -b "$new_branch" "$wt_path" HEAD && \
-  for env_file in "$source_dir"/.env*(N); do
-    ln -s "$env_file" "$wt_path/$(basename "$env_file")" && echo "Symlinked $(basename "$env_file")"
+  # Symlink all .env files preserving directory structure
+  (cd "$source_dir" && find . -name '.env*' -type f ! -path '*/.venv/*' ! -path '*/node_modules/*') | while read f; do
+    mkdir -p "$wt_path/$(dirname "$f")"
+    ln -s "$source_dir/$f" "$wt_path/$f" && echo "Symlinked $f"
   done
   cd "$wt_path"
 }
@@ -145,7 +153,8 @@ $worktrees"
 }
 
 # Create tmux session with iTerm2 integration (-CC) and 2x2 grid
-function tmux4() {
+# Usage: tmuxp [session_name]
+function tmuxp() {
   local session_name="${1:-main}"
   local start_dir="${PWD}"
 
@@ -159,6 +168,35 @@ function tmux4() {
   # Attach with iTerm2 integration
   tmux -CC attach -t "$session_name"
 }
+
+# Create tmux session with N tabs (iTerm2 tabs via -CC), each with 2 side-by-side panes
+# Usage: _tmux_tabs <num_tabs> [session_name]
+function _tmux_tabs() {
+  local num_tabs="$1"
+  local session_name="${2:-main}"
+  local start_dir="${PWD}"
+
+  # Create session with first window, split into 2 panes
+  tmux new-session -d -s "$session_name" -c "$start_dir"
+  tmux split-window -h -t "$session_name" -c "$start_dir"
+
+  # Create remaining windows, each with 2 panes
+  for i in $(seq 2 "$num_tabs"); do
+    tmux new-window -t "$session_name" -c "$start_dir"
+    tmux split-window -h -t "$session_name" -c "$start_dir"
+  done
+
+  # Select first window
+  tmux select-window -t "$session_name:1"
+
+  # Attach with iTerm2 integration
+  tmux -CC attach -t "$session_name"
+}
+
+# Generate tmux2 through tmux8 for N tabs with 2 panes each
+for i in {2..8}; do
+  eval "function tmux${i}() { _tmux_tabs $i \"\$1\"; }"
+done
 
 # Reattach to tmux session
 # Usage: tmuxa [session_name]
