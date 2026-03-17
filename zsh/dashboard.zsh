@@ -90,6 +90,7 @@ APPLESCRIPT
       osascript <<APPLESCRIPT
 tell application "Ghostty"
   new tab in front window
+  delay 0.3
   set t to focused terminal of selected tab of front window
   input text "TMUX= tmux attach -t ${linked}" to t
   send key "enter" to t
@@ -157,6 +158,7 @@ APPLESCRIPT
         osascript <<APPLESCRIPT
 tell application "Ghostty"
   new tab in front window
+  delay 0.3
   set t to focused terminal of selected tab of front window
   input text "TMUX= tmux attach -t ${linked}" to t
   send key "enter" to t
