@@ -66,9 +66,14 @@ function _tmux_dashboard() {
     osascript <<'APPLESCRIPT' 2>/dev/null
 tell application "Ghostty"
   set w to front window
+  -- Select last tab, close it via perform action, repeat until only dashboard remains
   repeat while (count of tabs of w) > 1
-    close last tab of w
+    select last tab of w
+    set t to focused terminal of selected tab of w
+    perform action "close_tab" on t
   end repeat
+  -- Re-select the first tab (dashboard)
+  select tab 1 of w
 end tell
 APPLESCRIPT
   }
@@ -252,7 +257,7 @@ APPLESCRIPT
           echo ""
           echo "  Session killed."
           # Close the dashboard tab too
-          osascript -e 'tell application "Ghostty" to close selected tab of front window' 2>/dev/null
+          osascript -e 'tell application "Ghostty" to perform action "close_tab" on focused terminal of selected tab of front window' 2>/dev/null
           return 0
         fi
         tput civis 2>/dev/null
