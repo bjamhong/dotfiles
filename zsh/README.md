@@ -12,105 +12,81 @@ source "$HOME/dev/dotfiles/zsh/functions.zsh"
 
 Then reload: `source ~/.zshrc`
 
+## Structure
+
+| File | Purpose |
+|------|---------|
+| `functions.zsh` | All shell functions and aliases (entry point) |
+| `dashboard.zsh` | Tmux dashboard UI (sourced by functions.zsh) |
+| `claude-ui-patterns.md` | Design notes on Claude Code's terminal UI patterns |
+
+## Aliases
+
+| Alias | Description |
+|-------|-------------|
+| `claude` | Claude Code with `--dangerously-skip-permissions` |
+
 ## Functions
+
+### AI
+
+| Command | Description |
+|---------|-------------|
+| `run <prompt>` | Natural language to bash — executes the command |
+| `ask <prompt>` | Natural language to bash — prints only (preview) |
 
 ### Worktree Management
 
 Worktrees are organized by project: `~/.ben-worktrees/<project-name>/<branch-name>`
 
-#### `wt`
+| Command | Description |
+|---------|-------------|
+| `wt` | Interactive worktree switcher (fzf) + create new |
+| `wt0` | Jump to base (main) worktree |
+| `wtd` | Delete current worktree (checks for uncommitted changes) |
+| `wtd!` | Force-delete current worktree |
+| `wtls` | List all worktrees |
+| `wtrename <name>` | Rename current worktree's branch + directory |
 
-Switch between worktrees or create a new one (requires fzf). New worktrees are created from current HEAD with `.env*` files symlinked.
+### Git
 
-```bash
-wt  # Opens fzf picker - select a worktree or "+ Create new worktree"
-```
-
-#### `wt0`
-
-Jump to the base (main) worktree from any worktree.
-
-```bash
-wt0  # Returns to the main repository
-```
-
-#### `wtd` / `wtd!`
-
-Delete the current worktree and return to main repo.
-
-```bash
-wtd   # Safe delete (checks for uncommitted changes first)
-wtd!  # Force delete (even with uncommitted changes)
-```
-
-#### `wtrename <new-name>`
-
-Rename the current worktree's branch and directory.
-
-```bash
-wtrename feature/new-name  # Renames branch and moves directory
-```
-
-#### `wtls`
-
-List all worktrees.
-
-```bash
-wtls  # Runs git worktree list
-```
-
-### Git Shortcuts
-
-#### `gpush`
-
-Push current branch to origin with upstream tracking.
-
-```bash
-gpush  # Pushes current branch to origin
-```
-
-#### `gpr`
-
-Create a GitHub PR for the current branch (wrapper around `gh pr create`).
-
-```bash
-gpr                    # Create PR interactively
-gpr --title "My PR"    # Pass arguments to gh pr create
-```
-
-#### `pmain`
-
-Pull origin/main into the current branch.
-
-```bash
-pmain  # git pull origin main
-```
-
-#### `save [commit message]`
-
-Stage all changes, commit, and push in one command.
-
-```bash
-save              # Commits as "wip" and pushes
-save fixed bug    # Commits as "fixed bug" and pushes
-```
+| Command | Description |
+|---------|-------------|
+| `gpush` | Push current branch to origin with `-u` |
+| `pmain` | Pull `origin/main` into current branch |
+| `save [msg]` | `add -A` + commit + push (defaults to "wip") |
+| `gpr` | Create a PR via `gh pr create` |
 
 ### Tmux
 
-#### `tmux4 [session_name]`
+Terminal-aware: uses Ghostty AppleScript for native tabs on macOS, `-CC` for iTerm2, plain tmux elsewhere.
 
-Creates a tmux session with iTerm2 integration (`-CC` flag) and a 2x2 grid of panes.
+| Command | Description |
+|---------|-------------|
+| `tmux2`..`tmux8` | Session with N tabs, each with 2 side-by-side panes |
+| `tmuxp [name]` | Session with 2x2 pane grid |
+| `tmuxa [name]` | Reattach to a session (reopens Ghostty tabs) |
+| `tkill <name>` | Kill session + grouped sessions |
 
-```bash
-tmux4           # Creates session named "main"
-tmux4 myproject # Creates session named "myproject"
+#### Ghostty Dashboard
+
+When running in Ghostty, `tmux2`-`tmux8` and `tmuxa` open an interactive dashboard in the first tab:
+
+```
+  ╭─ tmux: myproject ──────────────────────────────
+  │
+  │  ●  0  zsh             2 panes  zsh
+  │  ●  1  zsh             2 panes  zsh
+  │
+  ╰────────────────────────────────────────────────
+
+    a add   d delete   r rename   q detach   x kill
 ```
 
-#### `tmuxa [session_name]`
-
-Reattach to a tmux session with iTerm2 integration.
-
-```bash
-tmuxa           # Attach to "main"
-tmuxa myproject # Attach to "myproject"
-```
+| Key | Action |
+|-----|--------|
+| `a` | Add a new window + open Ghostty tab |
+| `d` | Delete a window by index |
+| `r` | Rename a window |
+| `q` | Detach (keep session alive for `tmuxa`) |
+| `x` | Kill entire session |
