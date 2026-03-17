@@ -42,11 +42,23 @@ function _tmux_dashboard() {
     done
   }
 
-  # ── Cleanup: kill current session entirely ──
+  # ── Cleanup: kill current session entirely + close Ghostty tabs ──
   _dashboard_kill() {
     tput cnorm 2>/dev/null
     _kill_grouped "$session"
     tmux kill-session -t "$session" 2>/dev/null
+    _close_ghostty_tabs
+  }
+
+  # ── Rebuild: tear down all grouped sessions/tabs, renumber, reopen ──
+  _rebuild_tabs() {
+    _kill_grouped "$session"
+    sleep 0.1
+    _close_ghostty_tabs
+    # Renumber windows to fill gaps (e.g. [0,2] → [0,1])
+    tmux move-window -r -t "$session" 2>/dev/null
+    sleep 0.2
+    _open_ghostty_tabs "$session"
   }
 
   # ── Close all Ghostty tabs except the first (dashboard) ──
@@ -81,7 +93,7 @@ APPLESCRIPT
     done
   }
 
-  trap "_dashboard_kill; echo ''; echo '  Session killed.'; return 0" INT
+  trap "_dashboard_kill; echo ''; echo '  Session killed.'; osascript -e 'tell application \"Ghostty\" to close selected tab of front window' 2>/dev/null; return 0" INT
   tput civis 2>/dev/null
 
   local sep_w=50
@@ -152,9 +164,10 @@ APPLESCRIPT
         printf "\r  ${c_red}delete window: ${c_r}"
         read -r widx
         tput civis 2>/dev/null
-        if [ -n "$widx" ]; then
+        if [ -n "$widx" ] && tmux list-windows -t "$session" -F '#{window_index}' 2>/dev/null | grep -qx "$widx"; then
           tmux kill-window -t "${session}:${widx}" 2>/dev/null
-          tmux kill-session -t "${session}-g${widx}" 2>/dev/null
+          # Rebuild: close all tabs, renumber windows, reopen tabs
+          _rebuild_tabs
         fi
         prev_frame=""
         ;;
@@ -238,6 +251,8 @@ APPLESCRIPT
           _dashboard_kill
           echo ""
           echo "  Session killed."
+          # Close the dashboard tab too
+          osascript -e 'tell application "Ghostty" to close selected tab of front window' 2>/dev/null
           return 0
         fi
         tput civis 2>/dev/null
