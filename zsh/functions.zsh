@@ -3,8 +3,20 @@
 # Claude Code with auto-accept permissions
 alias claude='claude --dangerously-skip-permissions'
 
-# Kill tmux session (usage: tkill <session_name>)
-alias tkill='tmux kill-session -t'
+# Kill tmux session and its grouped sessions
+# Usage: tkill <session_name>
+function tkill() {
+  local session_name="$1"
+  if [ -z "$session_name" ]; then
+    echo "Usage: tkill <session_name>"
+    return 1
+  fi
+  # Kill grouped sessions (created by Ghostty tab integration)
+  for s in $(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep "^${session_name}-g"); do
+    tmux kill-session -t "$s" 2>/dev/null
+  done
+  tmux kill-session -t "$session_name" 2>/dev/null
+}
 
 # Helper: create a new worktree from current HEAD
 function _gwt_create() {
@@ -152,7 +164,7 @@ $worktrees"
   echo "Switched to: $wt_path"
 }
 
-# Create tmux session with iTerm2 integration (-CC) and 2x2 grid
+# Create tmux session with 2x2 grid
 # Usage: tmuxp [session_name]
 function tmuxp() {
   local session_name="${1:-main}"
@@ -165,11 +177,19 @@ function tmuxp() {
   tmux split-window -t "$session_name" -c "$start_dir"
   tmux select-layout -t "$session_name" tiled
 
-  # Attach with iTerm2 integration
-  tmux -CC attach -t "$session_name"
+  if [[ "$TERM_PROGRAM" == "iTerm.app" ]]; then
+    tmux -CC attach -t "$session_name"
+  else
+    tmux attach -t "$session_name"
+  fi
 }
 
-# Create tmux session with N tabs (iTerm2 tabs via -CC), each with 2 side-by-side panes
+# Load tmux dashboard (separate file for organization)
+source "${0:A:h}/dashboard.zsh"
+
+# Create tmux session with N tabs, each with 2 side-by-side panes
+# In Ghostty: each tmux window gets its own native Ghostty tab, first tab is a dashboard
+# In iTerm2: uses -CC control mode for native tab integration
 # Usage: _tmux_tabs <num_tabs> [session_name]
 function _tmux_tabs() {
   local num_tabs="$1"
@@ -178,19 +198,43 @@ function _tmux_tabs() {
 
   # Create session with first window, split into 2 panes
   tmux new-session -d -s "$session_name" -c "$start_dir"
-  tmux split-window -h -t "$session_name" -c "$start_dir"
+  tmux split-window -h -t "${session_name}:0" -c "$start_dir"
 
-  # Create remaining windows, each with 2 panes
+  # Create remaining windows, each with 2 panes (explicit window targeting)
   for i in $(seq 2 "$num_tabs"); do
-    tmux new-window -t "$session_name" -c "$start_dir"
-    tmux split-window -h -t "$session_name" -c "$start_dir"
+    local widx=$(tmux new-window -t "$session_name" -c "$start_dir" -P -F '#{window_index}')
+    tmux split-window -h -t "${session_name}:${widx}" -c "$start_dir"
   done
 
-  # Select first window
-  tmux select-window -t "$session_name:1"
+  # Get actual window indices
+  local windows=($(tmux list-windows -t "$session_name" -F '#{window_index}'))
+  tmux select-window -t "$session_name:${windows[1]}"
 
-  # Attach with iTerm2 integration
-  tmux -CC attach -t "$session_name"
+  if [[ "$TERM_PROGRAM" == "ghostty" ]] && command -v osascript &>/dev/null; then
+    # Open native Ghostty tabs for ALL windows using grouped sessions
+    for i in $(seq 1 $num_tabs); do
+      local win_idx="${windows[$i]}"
+      local linked="${session_name}-g${win_idx}"
+      tmux new-session -d -t "$session_name" -s "$linked"
+      tmux select-window -t "$linked:${win_idx}"
+
+      osascript <<APPLESCRIPT
+tell application "Ghostty"
+  new tab in front window
+  set t to focused terminal of selected tab of front window
+  input text "TMUX= tmux attach -t ${linked}" to t
+  send key "enter" to t
+end tell
+APPLESCRIPT
+    done
+    sleep 0.3
+    # First tab becomes the dashboard
+    _tmux_dashboard "$session_name"
+  elif [[ "$TERM_PROGRAM" == "iTerm.app" ]]; then
+    tmux -CC attach -t "$session_name"
+  else
+    tmux attach -t "$session_name"
+  fi
 }
 
 # Generate tmux2 through tmux8 for N tabs with 2 panes each
@@ -199,10 +243,48 @@ for i in {2..8}; do
 done
 
 # Reattach to tmux session
+# In Ghostty: reopens native tabs for each tmux window + dashboard
 # Usage: tmuxa [session_name]
 function tmuxa() {
   local session_name="${1:-main}"
-  tmux -CC attach -t "$session_name"
+
+  if [[ "$TERM_PROGRAM" == "ghostty" ]] && command -v osascript &>/dev/null; then
+    # Clean up stale grouped sessions from previous attach
+    for s in $(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep "^${session_name}-g"); do
+      tmux kill-session -t "$s" 2>/dev/null
+    done
+
+    local windows=($(tmux list-windows -t "$session_name" -F '#{window_index}' 2>/dev/null))
+    if [ ${#windows[@]} -eq 0 ]; then
+      echo "Session '$session_name' not found"
+      return 1
+    fi
+
+    # Open Ghostty tabs for ALL windows
+    for i in $(seq 1 ${#windows[@]}); do
+      local win_idx="${windows[$i]}"
+      local linked="${session_name}-g${win_idx}"
+      tmux new-session -d -t "$session_name" -s "$linked"
+      tmux select-window -t "$linked:${win_idx}"
+
+      osascript <<APPLESCRIPT
+tell application "Ghostty"
+  new tab in front window
+  set t to focused terminal of selected tab of front window
+  input text "TMUX= tmux attach -t ${linked}" to t
+  send key "enter" to t
+end tell
+APPLESCRIPT
+    done
+
+    sleep 0.3
+    # First tab becomes the dashboard
+    _tmux_dashboard "$session_name"
+  elif [[ "$TERM_PROGRAM" == "iTerm.app" ]]; then
+    tmux -CC attach -t "$session_name"
+  else
+    tmux attach -t "$session_name"
+  fi
 }
 
 # Push current branch to origin with upstream tracking
@@ -316,3 +398,11 @@ function wtrename() {
 function gpr() {
   gh pr create "$@"
 }
+
+# Natural language to bash — runs the command
+# Usage: run list all files sorted by size
+function run() { eval "$(echo "Output ONLY a single bash command, no markdown, no explanation: $*" | claude -p --tools '')"; }
+
+# Natural language to bash — prints the command only
+# Usage: ask how to find large files over 100mb
+function ask() { echo "Output ONLY a single bash command, no markdown, no explanation: $*" | claude -p --tools ''; }
