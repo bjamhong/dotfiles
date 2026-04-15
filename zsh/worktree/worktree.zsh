@@ -809,16 +809,30 @@ function _wt_help() {
 }
 
 function _gwt_create() {
+  _wt_theme_init
+
   local source_dir="$(git rev-parse --show-toplevel 2>/dev/null)"
   local managed_dir="$(_wt_managed_dir)"
+  local wt_name=""
+  local new_branch=""
 
   if [ -z "$source_dir" ] || [ -z "$managed_dir" ]; then
     echo "Not in a git repository"
     return 1
   fi
 
-  echo -n "New worktree name: "
-  read wt_name
+  if [ ! -r /dev/tty ]; then
+    echo "Interactive terminal required to create a worktree"
+    return 1
+  fi
+
+  printf '\n%bNew worktree name:%b ' "$WT_C_ACCENT" "$WT_C_RESET" > /dev/tty
+  IFS= read -r wt_name < /dev/tty || {
+    printf '\n' > /dev/tty
+    echo "Cancelled"
+    return 1
+  }
+
   if [ -z "$wt_name" ]; then
     echo "Cancelled"
     return 1
@@ -830,8 +844,12 @@ function _gwt_create() {
   fi
 
   local default_branch="$wt_name"
-  echo -n "New branch name [$default_branch]: "
-  read new_branch
+  printf '%bNew branch name [%s]:%b ' "$WT_C_ACCENT" "$default_branch" "$WT_C_RESET" > /dev/tty
+  IFS= read -r new_branch < /dev/tty || {
+    printf '\n' > /dev/tty
+    echo "Cancelled"
+    return 1
+  }
   new_branch="${new_branch:-$default_branch}"
 
   local wt_path="$managed_dir/$wt_name"
@@ -1361,7 +1379,7 @@ function wt() {
       list_label=' named worktrees '
     fi
 
-    result="$(printf '%s' "$(_wt_picker_items "$picker_mode")" | fzf --ansi --expect=ctrl-d --bind 'ctrl-d:accept' --height=70% --min-height=14 --layout=reverse --padding=1,1 --border=rounded --border-label=' wt ' --border-label-pos=2 --header="$header_text" --header-border=rounded --header-label=' keys ' --header-label-pos=2 --list-label="$list_label" --list-label-pos=2 --info=inline-right --color='border:#888888,label:#d77757,header:#b9c0c8,prompt:#d77757,pointer:#4eba65,info:#b1b9f9,spinner:#d77757,marker:#4eba65,fg:#d9dde3,gutter:-1' --prompt='worktree > ' --delimiter=$'\t' --with-nth=3.. --id-nth=1)"
+    result="$(printf '%s' "$(_wt_picker_items "$picker_mode")" | fzf --ansi --expect=ctrl-d --bind 'enter:accept,ctrl-d:accept' --height=70% --min-height=14 --layout=reverse --padding=1,1 --border=rounded --border-label=' wt ' --border-label-pos=2 --header="$header_text" --header-border=rounded --header-label=' keys ' --header-label-pos=2 --list-label="$list_label" --list-label-pos=2 --info=inline-right --color='border:#888888,label:#d77757,header:#b9c0c8,prompt:#d77757,pointer:#4eba65,info:#b1b9f9,spinner:#d77757,marker:#4eba65,fg:#d9dde3,gutter:-1' --prompt='worktree > ' --delimiter=$'\t' --with-nth=3.. --id-nth=1)"
     if [ -z "$result" ]; then
       return 0
     fi
@@ -1369,6 +1387,9 @@ function wt() {
     result_lines=("${(@f)result}")
     if [ "${result_lines[1]}" = "ctrl-d" ]; then
       key="ctrl-d"
+      selected="${result_lines[2]}"
+    elif [ -z "${result_lines[1]}" ] && [ "${#result_lines[@]}" -ge 2 ]; then
+      key=""
       selected="${result_lines[2]}"
     else
       key=""
