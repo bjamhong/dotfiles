@@ -1,0 +1,5 @@
+theme = Dracula
+scroll-to-bottom = no-keystroke,no-output
+keybind = super+c=copy_to_clipboard:mixed
+keybind = super+v=paste_from_clipboard
+keybind = alt+backspace=unbind
