@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bugbot Loop"
+  short_description: "Wait for Cursor Bugbot and address PR findings"
+  default_prompt: "Run the Bugbot loop for this PR"

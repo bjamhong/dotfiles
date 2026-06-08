@@ -5,7 +5,7 @@ Modular ZSH helpers loaded from `~/.zshrc`.
 ## Install
 
 ```zsh
-source "$HOME/dev/dotfiles/zsh/functions.zsh"
+source "$HOME/dotfiles/zsh/functions.zsh"
 ```
 
 ## Layout
