@@ -5,11 +5,11 @@ description: Use for ANY frontend, UI, or visual-design work — building, resty
 
 # Design Skills (orchestrator)
 
-This skill holds **no design rules of its own**. It ensures the real design
-guidance — two curated, frequently-updated external skill packs — is present at
-its **latest** version and then gets used. Never hand-roll design opinions when
-these packs are available, and never copy their content into this file or into
-dotfiles (they change often; vendoring would rot).
+This skill holds **no design rules of its own**. It routes frontend work through
+the real design guidance — two curated, frequently-updated external skill packs
+— when they are available globally. Never hand-roll design opinions when these
+packs are available, and never copy their content into this file or into dotfiles
+(they change often; vendoring would rot).
 
 ## The packs (the only thing hardcoded here — sub-commands are discovered, not listed)
 
@@ -23,32 +23,51 @@ always derive the current set from the installed source (step 2).
 
 ## Workflow
 
-### 1. Refresh to latest (don't vendor)
+### 1. Check global availability first
 
-From the **target project root**, install/update the latest build. Both
-installers auto-detect the running harness and write to the correct dir
-(`.agents/skills/` for Codex/Pi, `.claude/skills/` for Claude, `.cursor/skills/`,
-`.pi/skills/`, …):
+Do **not** install skill packs into the target repository by default. These
+packs are reusable agent tooling, not project source. First check whether the
+global/user-level skills are already available through the active agent
+runtime's normal skill discovery mechanism.
+
+Look for these skill names, using whatever skill listing, loaded-skill metadata,
+or user-level skill directory the current runtime provides:
+
+- `impeccable`
+- `baseline-ui`
+- `fixing-accessibility`
+- `fixing-motion-performance`
+
+If they are installed, use those global copies. Do not run `npx ... install`
+from the target project root just to refresh them.
+
+If one or more are missing, ask the user before installing globally. A concise
+question is enough: "The design skill pack is not installed globally; should I
+install it in this agent's global/user skill store?" Only install after the user
+approves or has explicitly asked for installation.
+
+When installation is approved, install to the current runtime's global/user
+skill location, not inside the project repository. The exact path is
+runtime-specific; the active agent should know or discover it from its own
+environment.
+
+Use the package installers only from an out-of-repo temp/cache directory, then
+copy or move the resulting skills into that runtime's global/user skill store if
+the installer does not support an explicit global target. Never leave generated
+skill folders in the target repo unless the user explicitly asks to vendor them.
+
+For `ui-skills`, install only the three scoped skills, not the whole pack:
 
 ```bash
-npx -y impeccable@latest skills install      # impeccable, compiled for this harness
-npx -y ui-skills@latest add "baseline-ui fixing-accessibility fixing-motion-performance"   # only these three — NOT --all
+npx -y ui-skills@latest add "baseline-ui fixing-accessibility fixing-motion-performance"
 ```
 
-Generic fallback (agentskills.io CLI), if a per-pack installer misbehaves:
-
-```bash
-npx -y skills add pbakaus/impeccable
-# Note: `skills add ibelick/ui-skills` pulls the WHOLE pack. Prefer the scoped
-# `ui-skills add "..."` above so only the three skills we want get installed.
-```
-
-Re-run these at the **start of design work** so you're on current rules. Treat
-the installed copies as a throwaway cache: they are not meant to be committed —
-if the project tracks skill dirs, add the external ones to its `.gitignore`.
-
-After installing, the harness may need a skills reload before the new slash
-commands appear. If it doesn't pick them up this session, use step 3's fallback.
+For `impeccable`, prefer its installer if it can target the current runtime's
+global/user skill location. If it only auto-detects project harness folders, run
+it in a temporary directory and copy the generated `impeccable` skill into the
+global/user skill store. After installing, the harness may need a skills reload
+before native slash commands appear. If it doesn't pick them up this session,
+use step 3's fallback.
 
 ### 2. Discover what each pack provides (read the source, not your memory)
 
@@ -88,7 +107,7 @@ Don't re-invoke them repeatedly; internalize them.
 **Review passes — run at checkpoints.** impeccable `critique` / `audit` /
 `polish` and ui-skills `fixing-*` are discrete passes tied to lifecycle events:
 
-- **Entry** (every frontend session): run step 1 (refresh/install), load
+- **Entry** (every frontend session): run step 1 (global availability check), load
   `baseline-ui`, and for any non-trivial new UI run impeccable `shape` before
   building. **Add the exit review (below) to your task list now** so it survives
   the mid-build flow and isn't forgotten.
@@ -140,7 +159,10 @@ Don't pick from this list blindly — open each pack's current command index
 
 ## Rules
 
-- Always refresh to latest before relying on the packs.
+- Use globally installed packs when present; ask before installing or refreshing
+  missing packs.
+- Never install or refresh skill packs from the target project root unless the
+  user explicitly asks to vendor project-local skills.
 - Never copy pack content into this skill or into dotfiles.
-- Let the packs own the design opinions; this skill only guarantees they are
-  present, current, and actually used.
+- Let the packs own the design opinions; this skill only ensures agents check
+  for them, ask before changing installation state, and use them when available.
